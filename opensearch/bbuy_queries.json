@@ -46,6 +46,17 @@
             "ignore_above": 256
           }
         }
+      },
+      "user": {
+        "type": "keyword"
+      },
+      "click_time": {
+        "type": "date",
+        "format": "yyyy-MM-dd HH:mm:ss.SSS||yyyy-MM-dd HH:mm:ss"
+      },
+      "query_time": {
+        "type": "date",
+        "format": "yyyy-MM-dd HH:mm:ss.SSS||yyyy-MM-dd HH:mm:ss"
       }
     }
   }

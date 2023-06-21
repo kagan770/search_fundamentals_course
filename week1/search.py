@@ -1,11 +1,12 @@
 #
 # The main search hooks for the Search Flask application.
 #
+import json
 from flask import (
     Blueprint, redirect, render_template, request, url_for
 )
 
-from week1.opensearch import get_opensearch
+from opensearch_helper import get_client
 
 bp = Blueprint('search', __name__, url_prefix='/search')
 
@@ -50,15 +51,13 @@ def process_filters(filters_input):
             display_filters.append("{}: {}".format(display_name, key))
             applied_filters += "&{}.fieldName={}&{}.key={}".format(filter, field, filter, key)
     print("Filters: {}".format(filters))
-
     return filters, display_filters, applied_filters
-
 
 
 # Our main query route.  Accepts POST (via the Search box) and GETs via the clicks on aggregations/facets
 @bp.route('/query', methods=['GET', 'POST'])
 def query():
-    opensearch = get_opensearch() # Load up our OpenSearch client from the opensearch.py file.
+    opensearch = get_client() # Load up our OpenSearch client from the opensearch_helper.py file.
     # Put in your code to query opensearch.  Set error as appropriate.
     error = None
     user_query = None
@@ -68,6 +67,10 @@ def query():
     filters = None
     sort = "_score"
     sortDir = "desc"
+    if request.method == 'PUT':
+        redirect(url_for("index"))
+    if request.method == 'DELETE':
+        redirect(url_for("index"))
     if request.method == 'POST':  # a query has been submitted
         user_query = request.form['query']
         if not user_query:
@@ -86,18 +89,20 @@ def query():
         sortDir = request.args.get("sortDir", sortDir)
         if filters_input:
             (filters, display_filters, applied_filters) = process_filters(filters_input)
-
         query_obj = create_query(user_query, filters, sort, sortDir)
     else:
         query_obj = create_query("*", [], sort, sortDir)
+    print("query: {}".format(str(query_obj)).replace("\'", "\"").replace(" ",""))
 
-    print("query obj: {}".format(query_obj))
+    try:
+        response = opensearch.search(index='bbuy_products', body=query_obj)
+        json_response = json.dumps(response)  # indent for pretty printing
+        print("response: {}".format(json_response.replace("\n","").replace(" ","")))
+    except Exception as e:
+        error = str(e)
+        print(error)
+        response = None
 
-    #### Step 4.b.ii
-    response = None   # TODO: Replace me with an appropriate call to OpenSearch
-    # Postprocess results here if you so desire
-
-    #print(response)
     if error is None:
         return render_template("search_results.jinja2", query=user_query, search_response=response,
                                display_filters=display_filters, applied_filters=applied_filters,
@@ -108,14 +113,53 @@ def query():
 
 def create_query(user_query, filters, sort="_score", sortDir="desc"):
     print("Query: {} Filters: {} Sort: {}".format(user_query, filters, sort))
+    # fixme: research the regular price data
+    # fixme: research the unknown images.
     query_obj = {
         'size': 10,
         "query": {
-            "match_all": {} # Replace me with a query that both searches and filters
+            "bool": {
+                "must": {
+                    "query_string": {
+                        "query": user_query,
+                        "fields": ["name", "shortDescription", "longDescription"],
+                        "phrase_slop": 3},
+                }
+                # ,"filter": filters
+            },
         },
         "aggs": {
-            #### Step 4.b.i: create the appropriate query and aggregations here
-
-        }
+            "regularPrice": {"range": {
+                    "field": "regularPrice",
+                             "ranges": [
+                                {"to": 20.0},
+                                 {"from": 20.0, "to": 300.0},
+                                 {"from": 30.0, "to": 40.0},
+                                 {"from": 40.0, "to": 50.0},
+                                 {"from": 50.0, "to": 60.0},
+                                 {"from": 60.0, "to": 70.0},
+                                 {"from": 70.0, "to": 80.0},
+                                 {"from": 80.0, "to": 90.0},
+                                 {"from": 90.0, "to": 100.0},
+                                 {"from": 100.0, "to": 200.0},
+                                {"from": 200.0, "to": 300.0},
+                                {"from": 300.0, "to": 400.0},
+                                {"from": 400.0, "to": 500.0},
+                                {"from": 500.0}
+                            ]
+                }},
+            "department": {
+                "terms": {
+                    "field": "department.keyword"
+                }},
+            "missing_images": {
+                "missing": {
+                    "field": "image.keyword"
+                }}},
+        "highlight": {
+            "fields": {"name": {},"shortDescription": {},"longDescription": {}
+            }
+        },
+        "sort": [{sort: {"order": sortDir}},{"name.keyword": {"order": sortDir}}]
     }
     return query_obj

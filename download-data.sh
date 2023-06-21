@@ -1,6 +1,10 @@
-cd /workspace/datasets
-# TODO: put in validation checks
-#pip install kaggle
+#cd /workspace/datasets
+
+# Check if `kaggle` command exists
+if ! command -v kaggle &> /dev/null; then
+    echo "'kaggle' command does not exist. Please install it first."
+    exit 1
+fi
 echo "Downloading Kaggle"
 kaggle competitions download -c acm-sf-chapter-hackathon-big
 unzip acm-sf-chapter-hackathon-big.zip

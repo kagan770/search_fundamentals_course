@@ -1,25 +1,21 @@
 # From https://github.com/dshvadskiy/search_with_machine_learning_course/blob/main/index_products.py
-import opensearchpy
-import requests
-from lxml import etree
+import concurrent.futures
+import glob
+import logging
+from time import perf_counter
 
 import click
-import glob
-from opensearchpy import OpenSearch
+from lxml import etree
+from opensearchpy.helpers import BulkIndexError
 from opensearchpy.helpers import bulk
-import logging
 
-from time import perf_counter
-import concurrent.futures
-
-
+from opensearch_client import get_opensearch
+from faker import Faker
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logging.basicConfig(format='%(levelname)s:%(message)s')
 
-# NOTE: this is not a complete list of fields.  If you wish to add more, put in the appropriate XPath expression.
-#TODO: is there a way to do this using XPath/XSL Functions so that we don't have to maintain a big list?
 mappings =  [
             "productId/text()", "productId",
             "sku/text()", "sku",
@@ -77,19 +73,11 @@ mappings =  [
             "longDescription/text()", "longDescription",
             "longDescriptionHtml/text()", "longDescriptionHtml",
             "features/*/text()", "features" # Note the match all here to get the subfields
-
         ]
-
-def get_opensearch():
-    host = 'localhost'
-    port = 9200
-    auth = ('admin', 'admin')
-    #### Step 2.a: Create a connection to OpenSearch
-    client = None
-    return client
 
 
 def index_file(file, index_name):
+    fake = Faker()
     docs_indexed = 0
     client = get_opensearch()
     logger.info(f'Processing file : {file}')
@@ -103,14 +91,36 @@ def index_file(file, index_name):
             xpath_expr = mappings[idx]
             key = mappings[idx + 1]
             doc[key] = child.xpath(xpath_expr)
-        #print(doc)
+        # print(doc)
         if 'productId' not in doc or len(doc['productId']) == 0:
             continue
         #### Step 2.b: Create a valid OpenSearch Doc and bulk index 2000 docs at a time
-        the_doc = None
+        the_doc = {
+            "_index": index_name,
+            # "_id": doc['productId'][0], # Assuming productId is unique
+            "_id": fake.uuid4(),
+            "_source": doc,
+        }
         docs.append(the_doc)
 
+        # Bulk index 2000 docs at a time
+        if len(docs) >= 2000:
+            try:
+                bulk(client, docs, request_timeout=180)
+            except BulkIndexError as e:
+                print(e.errors)
+            docs_indexed += len(docs)
+            docs = []
+
+    # Index remaining docs if any
+    if docs:
+        try:
+            bulk(client, docs, request_timeout=180)
+        except BulkIndexError as e:
+            print(e.errors)
+        docs_indexed += len(docs)
     return docs_indexed
+
 
 @click.command()
 @click.option('--source_dir', '-s', help='XML files source directory')
@@ -128,6 +138,7 @@ def main(source_dir: str, index_name: str, workers: int):
 
     finish = perf_counter()
     logger.info(f'Done. Total docs: {docs_indexed} in {(finish - start)/60} minutes')
+
 
 if __name__ == "__main__":
     main()
