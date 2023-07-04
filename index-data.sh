@@ -22,7 +22,7 @@ usage()
 PRODUCTS_JSON_FILE="opensearch/bbuy_products.json"
 QUERIES_JSON_FILE="opensearch/bbuy_queries.json"
 DATASETS_DIR="/Users/romankagan/Downloads/acm-sf-chapter-hackathon-big"
-PYTHON_LOC="/Users/romankagan/source/CoRise/kagan770/search_fundamentals_course/week1"
+PYTHON_LOC="/Users/romankagan/source/CoRise/kagan770/search_fundamentals_course/week2"
 
 LOGS_DIR="/Users/romankagan/source/CoRise/kagan770/search_fundamentals_course/logs"
 

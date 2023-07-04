@@ -11,14 +11,14 @@ def create_app(test_config=None):
     if test_config is None:
         # load the instance config, if it exists, when not testing
         app.config.from_envvar('LTR_APPLICATION_SETTINGS', silent=True)
-        PRIOR_CLICKS_LOC = os.environ.get("PRIOR_CLICKS_LOC", "/workspace/datasets/train.csv")
+        PRIOR_CLICKS_LOC = os.environ.get("PRIOR_CLICKS_LOC", "Users/romankagan/Downloads/acm-sf-chapter-hackathon-big/train.csv")
         print("PRIOR CLICKS: %s" % PRIOR_CLICKS_LOC)
         if PRIOR_CLICKS_LOC and os.path.isfile(PRIOR_CLICKS_LOC):
             priors = pd.read_csv(PRIOR_CLICKS_LOC)
             priors_gb = priors.groupby("query")
             app.config["priors_df"] = priors
             app.config["priors_gb"] = priors_gb
-        #print(app.config)
+        print(app.config)
     else:
         # load the test config if passed in
         app.config.from_mapping(test_config)
@@ -30,9 +30,9 @@ def create_app(test_config=None):
         pass
 
     # A simple landing page
-    #@app.route('/')
-    #def index():
-    #    return render_template('index.jinja2')
+    @app.route('/')
+    def index():
+       return render_template('index.jinja2')
 
     from . import search
     app.register_blueprint(search.bp)

@@ -2,9 +2,8 @@
 # Modified for building suggesters
 import click
 import pandas as pd
-from opensearchpy import OpenSearch
 from opensearchpy.helpers import bulk
-import string
+from opensearch_client import get_opensearch
 
 import logging
 import time
@@ -14,24 +13,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logging.basicConfig(format='%(levelname)s:%(message)s')
 
-def get_opensearch():
-
-    host = 'localhost'
-    port = 9200
-    auth = ('admin', 'admin')
-    client = OpenSearch(
-        hosts=[{'host': host, 'port': port}],
-        http_compress=True,  # enables gzip compression for request bodies
-        http_auth=auth,
-        # client_cert = client_cert_path,
-        # client_key = client_key_path,
-        use_ssl=True,
-        verify_certs=False,
-        ssl_assert_hostname=False,
-        ssl_show_warn=False,
-        #ca_certs=ca_certs_path
-    )
-    return client
 
 @click.command()
 @click.option('--source_file', '-s', help='source csv file', required=True)

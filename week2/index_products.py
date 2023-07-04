@@ -1,18 +1,14 @@
 # From https://github.com/dshvadskiy/search_with_machine_learning_course/blob/main/index_products.py
-import opensearchpy
-import requests
-from lxml import etree
+import concurrent.futures
+import glob
+import logging
+from time import perf_counter
 
 import click
-import glob
-from opensearchpy import OpenSearch
+from lxml import etree
 from opensearchpy.helpers import bulk
-import logging
 
-from time import perf_counter
-import concurrent.futures
-
-
+from opensearch_client import get_opensearch
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -79,25 +75,6 @@ mappings =  [
             "features/*/text()", "features" # Note the match all here to get the subfields
 
         ]
-
-def get_opensearch():
-
-    host = 'localhost'
-    port = 9200
-    auth = ('admin', 'admin')
-    client = OpenSearch(
-        hosts=[{'host': host, 'port': port}],
-        http_compress=True,  # enables gzip compression for request bodies
-        http_auth=auth,
-        # client_cert = client_cert_path,
-        # client_key = client_key_path,
-        use_ssl=True,
-        verify_certs=False,
-        ssl_assert_hostname=False,
-        ssl_show_warn=False,
-        #ca_certs=ca_certs_path
-    )
-    return client
 
 def index_file(file, index_name):
     docs_indexed = 0
